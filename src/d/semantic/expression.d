@@ -293,8 +293,11 @@ struct ExpressionVisitor {
 			case PostDec :
 				if(auto pt = cast(PointerType) peelAlias(expr.type).type) {
 					expr = getTemporaryLvalue(expr);
-					
-					Expression n = new IntegerLiteral!true(e.location, (op == PreInc || op == PostInc)? 1 : -1, TypeKind.Ulong);
+					version (D_LP64) {
+						Expression n = new IntegerLiteral!true(e.location, (op == PreInc || op == PostInc)? 1 : -1, TypeKind.Ulong);
+					} else {
+						Expression n = new IntegerLiteral!true(e.location, (op == PreInc || op == PostInc)? 1 : -1, TypeKind.Uint);
+					}
 					auto i = new IndexExpression(e.location, pt.pointed, expr, [n]);
 					auto v = new UnaryExpression(e.location, expr.type, AddressOf, i);
 					auto r = new BinaryExpression(e.location, expr.type, BinaryOp.Assign, expr, v);
