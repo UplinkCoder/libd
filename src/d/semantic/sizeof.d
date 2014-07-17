@@ -53,7 +53,7 @@ struct SizeofVisitor {
 				return 8;
 			
 			case Ucent :
-				assert(0, "Not Implemented");
+				return 16;
 			
 			case Byte :
 				return 1;
@@ -68,7 +68,7 @@ struct SizeofVisitor {
 				return 8;
 			
 			case Cent :
-				assert(0, "Not Implemented");
+				return 16;
 			
 			case Float :
 				return 4;

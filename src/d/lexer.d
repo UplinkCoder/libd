@@ -739,7 +739,7 @@ auto lex(alias locationProvider, R)(R r, Context context) if(isForwardRange!R) {
 private:
 
 @property
-char front(string s) {
+char front(string s) { 
 	return s[0];
 }
 
