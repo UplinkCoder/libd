@@ -80,11 +80,11 @@ AstStatement parseStatement(TokenRange)(ref TokenRange trange) if(isTokenRange!T
 			trange.match(OpenParen);
 			
 			AstStatement init;
-			if(trange.front.type == Semicolon) {
-				init = new AstBlockStatement(trange.front.location, []);
-				trange.popFront();
-			} else {
+			if(trange.front.type != Semicolon) {
 				init = trange.parseStatement();
+			} else {
+				 new AstBlockStatement(trange.front.location, []);
+                                 trange.popFront();
 			}
 			
 			AstExpression condition;

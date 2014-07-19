@@ -251,9 +251,9 @@ class ErrorType : Type {
  */
 class ArrayType : Type {
 	QualType elementType;
-	ulong size;
+	size_t size;
 	
-	this(QualType elementType, ulong size) {
+	this(QualType elementType, size_t size) {
 		this.elementType = elementType;
 		this.size = size;
 	}

@@ -151,7 +151,7 @@ struct IdentifierVisitor(alias handler, bool asAlias = false) {
 				import d.semantic.caster, d.semantic.expression;
 				auto ev = ExpressionVisitor(pass);
 				auto se = buildImplicitCast(pass, i.index.location, getBuiltin(TypeKind.Ulong), ev.visit(i.index));
-				auto size = (cast(IntegerLiteral!false) pass.evaluate(se)).value;
+				auto size = cast(size_t)(cast(IntegerLiteral!false) pass.evaluate(se)).value;
 				
 				return handler(QualType(new ArrayType(identified, size)));
 			} else static if(is(typeof(identified) : Expression)) {

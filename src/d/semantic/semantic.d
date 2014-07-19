@@ -54,7 +54,7 @@ final class SemanticPass {
 	
 	ObjectReference object;
 	
-	Name[] versions = [BuiltinName!"SDC", BuiltinName!"D_LP64"];
+	Name[] versions = [BuiltinName!"SDC"/*, BuiltinName!"D_LP64"*/];
 	
 	static struct State {
 		Scope currentScope;
