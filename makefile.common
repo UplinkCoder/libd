@@ -1,5 +1,4 @@
 # Common definitions
-
 LIBD_SRC_BASE = $(LIBD_ROOT)/src/d/*.d
 LIBD_SRC_UTIL = $(LIBD_ROOT)/src/util/*.d
 LIBD_SRC_AST = $(LIBD_ROOT)/src/d/ast/*.d
@@ -30,25 +29,25 @@ $(LIBD): obj/base.o obj/util.o obj/ast.o obj/ir.o obj/parser.o $(LIBD_SEMANTIC_O
 
 obj/base.o: $(LIBD_DEP_BASE)
 	@mkdir -p obj
-	$(DMD) -c -of$@ $(LIBD_SRC_BASE) $(DFLAGS) $(LIBD_IMPORTS)
+	gdc -c -o$@ $(LIBD_SRC_BASE) $(DFLAGS) $(LIBD_IMPORTS)
 
 obj/util.o: $(LIBD_DEP_UTIL)
 	@mkdir -p obj
-	$(DMD) -c -of$@ $(LIBD_SRC_UTIL) $(DFLAGS) $(LIBD_IMPORTS)
+	gdc -c -o$@ $(LIBD_SRC_UTIL) $(DFLAGS) $(LIBD_IMPORTS)
 
 obj/ast.o: $(LIBD_DEP_AST)
 	@mkdir -p obj
-	$(DMD) -c -of$@ $(LIBD_SRC_AST) $(DFLAGS) $(LIBD_IMPORTS)
+	gdc -c -o$@ $(LIBD_SRC_AST) $(DFLAGS) $(LIBD_IMPORTS)
 
 obj/ir.o: $(LIBD_DEP_IR)
 	@mkdir -p obj
-	$(DMD) -c -of$@ $(LIBD_SRC_IR) $(DFLAGS) $(LIBD_IMPORTS)
+	gdc -c -o$@ $(LIBD_SRC_IR) $(DFLAGS) $(LIBD_IMPORTS)
 
 obj/parser.o: $(LIBD_DEP_PARSER)
 	@mkdir -p obj
-	$(DMD) -c -of$@ $(LIBD_SRC_PARSER) $(DFLAGS) $(LIBD_IMPORTS)
+	gdc -c -o$@ $(LIBD_SRC_PARSER) $(DFLAGS) $(LIBD_IMPORTS)
 
 obj/semantic/%.o: $(LIBD_ROOT)/src/d/semantic/%.d $(LIBD_DEP_SEMANTIC)
 	@mkdir -p obj/semantic
-	$(DMD) -c -of$@ $< $(DFLAGS) $(LIBD_IMPORTS)
+	gdc -c -o$@ $< $(DFLAGS) $(LIBD_IMPORTS)
 

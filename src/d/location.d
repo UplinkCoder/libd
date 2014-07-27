@@ -10,18 +10,18 @@ import std.system;
  */
 struct Location {
 	Source source;
-	
+
 	uint line = 1;
 	uint index = 1;
 	uint length = 0;
-	
+
 	string toString() const {
 		return source.format(this);
 	}
-	
+
 	void spanTo(ref const Location end) in {
 		assert(source is end.source, "locations must have the same source !");
-		
+
 		assert(line <= end.line);
 		assert(index <= end.index);
 		assert(index + length <= end.index + end.length);
@@ -32,33 +32,33 @@ struct Location {
 
 abstract class Source {
 	string content;
-	
+
 	this(string content) {
 		this.content = content;
 	}
-	
+
 	abstract string format(const Location location) const;
-	
+
 	@property
 	abstract string filename() const;
 }
 
 final class FileSource : Source {
 	string _filename;
-	
+
 	this(string filename) {
-		_filename = filename;
-		
+		_packages = filename[0 .. $ - 2].split("/");
+		_filename = packages[$];
 		import std.file;
 		auto data = cast(const(ubyte)[]) read(filename);
 		super(convertToUTF8(data) ~ '\0');
 	}
-	
+
 	override string format(const Location location) const {
 		import std.conv;
 		return _filename ~ ':' ~ to!string(location.line);
 	}
-	
+
 	@property
 	override string filename() const {
 		return _filename;
@@ -67,21 +67,42 @@ final class FileSource : Source {
 
 final class MixinSource : Source {
 	Location location;
-	
+
 	this(Location location, string content) {
 		this.location = location;
 		super(content);
 	}
-	
+
 	override string format(const Location dummy) const {
 		return location.toString();
 	}
-	
+
 	@property
 	override string filename() const {
 		return location.source.filename;
 	}
 }
+
+final class StringSource : Source {
+	string _name;
+
+	this (in string content, in string name) {
+		_name = name;
+
+		super(content);
+	}
+
+	override string format(const Location location) const {
+		import std.conv;
+		return _name ~ ':' ~ to!string(location.line);
+	}
+
+	@property
+	override string filename() const {
+		return _name;
+	}
+}
+
 
 /// Given data, it looks at the BOM to detect which encoding, and converts
 /// the text from that encoding into UTF-8.
@@ -118,7 +139,7 @@ string convertToUTF8Impl(CType, Endian end)(const(ubyte)[] data) {
 		}
 		res ~= *(cast(CType*)buf.ptr);
 	}
-	
+
 	return toUTF8(res);
 }
 
