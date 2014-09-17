@@ -12,7 +12,7 @@ import d.ir.type;
 
 import d.context;
 import d.exception;
-import d.location;
+import d.source;
 
 import std.algorithm;
 import std.array;

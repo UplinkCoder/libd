@@ -236,6 +236,7 @@ struct DeclarationVisitor {
 		import d.ir.expression;
 		if(auto str = cast(StringLiteral) value) {
 			import d.lexer;
+			import d.source;
 			auto source = new MixinSource(location, str.value);
 			auto trange = lex!((line, begin, length) => Location(source, line, begin, length))(str.value ~ '\0', context);
 			

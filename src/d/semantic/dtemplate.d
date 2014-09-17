@@ -10,7 +10,7 @@ import d.ir.expression;
 import d.ir.symbol;
 import d.ir.type;
 
-import d.location;
+import d.source;
 
 import std.algorithm;
 import std.array;

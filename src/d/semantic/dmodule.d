@@ -12,7 +12,7 @@ import d.ast.dmodule;
 import d.ir.symbol;
 
 import d.context;
-import d.location;
+import d.source;
 
 import std.algorithm;
 import std.array;
