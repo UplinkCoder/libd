@@ -45,7 +45,7 @@ final class FileSource : Source {
 	
 	this(string filename) {
 		_filename = filename;
-		
+
 		import std.file;
 		auto data = cast(const(ubyte)[]) read(filename);
 		super(convertToUTF8(data) ~ '\0');
@@ -55,7 +55,7 @@ final class FileSource : Source {
 		import std.conv;
 		return _filename ~ ':' ~ to!string(location.line);
 	}
-	
+
 	@property
 	override string filename() const {
 		return _filename;
@@ -77,5 +77,35 @@ final class MixinSource : Source {
 	@property
 	override string filename() const {
 		return location.source.filename;
+	}
+}
+
+/**
+* This class is mostly ment for Unittests and such but could also be used by REPL and stuff.
+*/
+final class StringSource : Source {
+	string _name;
+	immutable string[] _packages;
+
+	this(in string content,in string name, immutable string[] _packages=[]) {
+		_name = name;
+		this._packages = _packages;
+		assert(name[$-2 .. $] != ".d","stringSources don't get the .d extention");
+		super(content ~ '\0');
+	}
+
+	override string format(const Location location) const {
+		import std.conv;
+		return _name ~ ':' ~ to!string(location.line);
+	}
+
+	@property
+	override string filename() const {
+		return _name;
+	}
+
+	@property
+	const(string[]) packages() const {
+		return _packages;
 	}
 }
