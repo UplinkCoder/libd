@@ -17,6 +17,10 @@ alias FunctionType = d.ir.type.FunctionType;
 alias DelegateType = d.ir.type.DelegateType;
 alias ArrayType = d.ir.type.ArrayType;
 
+TypeKind getSizeTKind(SemanticPass pass) {
+	return (cast(BuiltinType) pass.object.getSizeT().type.type).kind;
+}
+
 struct TypeVisitor {
 	private SemanticPass pass;
 	alias pass this;
