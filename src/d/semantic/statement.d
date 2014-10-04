@@ -167,7 +167,81 @@ struct StatementVisitor {
 		
 		flattenedStmts[$ - 1] = new ForStatement(f.location, initialize, condition, increment, statement);
 	}
-	
+
+	void visit(ForeachStatement fr) {
+		auto oldScope = currentScope;
+		scope(exit) currentScope = oldScope;
+		currentScope = (cast(NestedScope) oldScope).clone();
+		
+		auto getVariableExpressionFromDeclaration(VariableDeclaration vd,QualType t) {
+			import d.semantic.defaultinitializer;
+			import d.semantic.declaration;
+			
+			vd.value = InitBuilder(pass).visit(vd.location, t);
+			auto syms = DeclarationVisitor(pass).flatten(vd);
+			assert(syms.length == 1 && syms[] !is null, "VariableDecl in foreach has more then one Symbol?!?!");
+			auto v = cast(Variable) syms[0];
+			v.type = t;
+			return new VariableExpression(vd.location, v);
+		}
+		
+		import d.semantic.expression;
+		import d.semantic.defaultinitializer;
+		
+		if(fr.reverse) assert(0,"foreach_reverse is not supported");
+		
+		auto sizeT = peelAlias(pass.object.getSizeT().type); 
+		
+		auto expr = ExpressionVisitor(pass).visit(fr.iterrated);
+		auto exprType = peelAlias(expr.type);
+		
+		auto at = cast(ArrayType) exprType.type;
+		auto st = cast(SliceType) exprType.type;
+		
+		if (!(at||st)) {
+			import d.exception;
+			throw new CompileException(expr.location, typeid(expr.type.type).toString()~" is not supported as foreach argument (for now)");
+		} else {
+			Location loc = fr.location;
+			QualType elementType;
+			Expression size;
+			VariableExpression idx;
+			VariableExpression elem;
+			
+			if (at) {
+				elementType = at.elementType;
+			} else {
+				elementType = st.sliced;
+			}
+			
+			import d.semantic.identifier;
+			size = SymbolResolver!(delegate Expression (e) {
+				static if(is(typeof(e) : Expression)) {
+					return buildImplicitCast(pass, e.location, pass.object.getSizeT().type, e);
+				}
+				assert(0,"Unreachable");
+			})(pass).resolveInExpression(expr.location, expr, BuiltinName!"length");
+			
+			if (fr.tupleElements.length == 2) {
+				idx = getVariableExpressionFromDeclaration(fr.tupleElements[0], sizeT);
+				elem = getVariableExpressionFromDeclaration(fr.tupleElements[1], elementType);
+			} else if (fr.tupleElements.length == 1) {
+				idx = new VariableExpression(loc, new Variable(loc, sizeT, BuiltinName!"", InitBuilder(pass).visit(loc, sizeT)));
+				elem = getVariableExpressionFromDeclaration(fr.tupleElements[0], elementType);
+			}
+			
+			// XXX: ExpressionStatement(idx) seems wrong if anything breaks bcause of this blame UplinkCoder
+			auto init = new ExpressionStatement(idx);
+			auto inc =  new UnaryExpression(loc, idx.type, UnaryOp.PostInc, idx);
+			auto cmpr = new BinaryExpression(loc, getBuiltin(TypeKind.Bool), BinaryOp.Less, idx, size);
+			auto assign = new BinaryExpression(loc, elementType, BinaryOp.Assign, elem, new IndexExpression(loc, elementType, expr, [idx]));
+			
+			auto stmt = new BlockStatement(fr.statement.location, [new ExpressionStatement(assign), autoBlock(fr.statement)]);
+			
+			flattenedStmts ~= new ForStatement(loc, init, cmpr, inc, stmt);
+		}
+	}
+
 	void visit(AstReturnStatement r) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
