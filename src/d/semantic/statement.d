@@ -38,142 +38,216 @@ alias CatchBlock = d.ir.statement.CatchBlock;
 struct StatementVisitor {
 	private SemanticPass pass;
 	alias pass this;
-	
+
 	private Statement[] flattenedStmts;
-	
+
 	this(SemanticPass pass) {
 		this.pass = pass;
 	}
-	
+
 	BlockStatement flatten(AstBlockStatement b) {
 		auto oldFlattenedStmts = flattenedStmts;
 		scope(exit) flattenedStmts = oldFlattenedStmts;
-		
+
 		flattenedStmts = [];
-		
+
 		foreach(ref s; b.statements) {
 			visit(s);
 		}
-		
+
 		return new BlockStatement(b.location, flattenedStmts);
 	}
-	
+
 	void visit(AstStatement s) {
 		return this.dispatch(s);
 	}
-	
+
 	void visit(AstBlockStatement b) {
 		auto oldScope = currentScope;
 		scope(exit) currentScope = oldScope;
-		
+
 		currentScope = (cast(NestedScope) oldScope).clone();
-		
+
 		flattenedStmts ~= flatten(b);
 	}
-	
+
 	void visit(DeclarationStatement s) {
 		import d.ast.base;
 		import d.semantic.declaration;
 		auto dv = DeclarationVisitor(pass, AddContext.Yes, Visibility.Private);
 		auto syms = dv.flatten(s.declaration);
 		scheduler.require(syms);
-		
+
 		flattenedStmts ~= syms.map!(d => new SymbolStatement(d)).array();
 	}
-	
+
+	private auto getVariableExpressionFormDecl (Declaration d) {
+		return getVariableExpressionFormDecl(d,d.type);
+	}
+
+	private auto getVariableExpressionFormDecl (Declaration d,QualType type) {
+		import d.semantic.defaultinitializer;
+		import d.semantic.declaration;
+		auto ib = new InitBuilder(pass);
+		d.value = ib.visit(d.location, type);
+		auto dv = DeclarationVisitor(pass, AddContext.Yes, Visibility.Private);
+		auto symbol = dv.flatten(d);
+		scheduler.require(symbol);
+		auto v = cast (Variable) symbol;
+		return new VariableExpression(fr.tupleElements[0].location,v);
+	}
+
+
 	void visit(AstExpressionStatement s) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		flattenedStmts ~= new ExpressionStatement(ev.visit(s.expression));
 	}
-	
+
 	private auto autoBlock(AstStatement s) {
 		auto oldScope = currentScope;
 		scope(exit) currentScope = oldScope;
-		
+
 		currentScope = (cast(NestedScope) oldScope).clone();
-		
+
 		if(auto b = cast(AstBlockStatement) s) {
 			return flatten(b);
 		}
-		
+
 		return flatten(new AstBlockStatement(s.location, [s]));
 	}
-	
+
 	void visit(AstIfStatement s) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		auto condition = buildExplicitCast(pass, s.condition.location, getBuiltin(TypeKind.Bool), ev.visit(s.condition));
 		auto then = autoBlock(s.then);
-		
+
 		Statement elseStatement;
 		if(s.elseStatement) {
 			elseStatement = autoBlock(s.elseStatement);
 		}
-		
+
 		flattenedStmts ~= new IfStatement(s.location, condition, then, elseStatement);
 	}
-	
+
 	void visit(AstWhileStatement w) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		auto condition = buildExplicitCast(pass, w.condition.location, getBuiltin(TypeKind.Bool), ev.visit(w.condition));
 		auto statement = autoBlock(w.statement);
-		
+
 		flattenedStmts ~= new WhileStatement(w.location, condition, statement);
 	}
-	
+
 	void visit(AstDoWhileStatement w) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		auto condition = buildExplicitCast(pass, w.condition.location, getBuiltin(TypeKind.Bool), ev.visit(w.condition));
 		auto statement = autoBlock(w.statement);
-		
+
 		flattenedStmts ~= new DoWhileStatement(w.location, condition, statement);
 	}
-	
+
 	void visit(AstForStatement f) {
 		auto oldScope = currentScope;
 		scope(exit) currentScope = oldScope;
-		
+
 		currentScope = (cast(NestedScope) oldScope).clone();
-		
+
 		// FIXME: if initialize is flattened into several statement, scope is wrong.
-		visit(f.initialize);
+		visit(f.initialize);// use autoBlock here ?
 		auto initialize = flattenedStmts[$ - 1];
-		
+
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		Expression condition;
 		if(f.condition) {
 			condition = buildExplicitCast(pass, f.condition.location, getBuiltin(TypeKind.Bool), ev.visit(f.condition));
 		} else {
 			condition = new BooleanLiteral(f.location, true);
 		}
-		
+
 		Expression increment;
 		if(f.increment) {
 			increment = ev.visit(f.increment);
 		} else {
 			increment = new BooleanLiteral(f.location, true);
 		}
-		
+
 		auto statement = autoBlock(f.statement);
-		
+
 		flattenedStmts[$ - 1] = new ForStatement(f.location, initialize, condition, increment, statement);
 	}
-	
+
+	void visit(ForeachStatement fr) {
+		auto oldScope = currentScope;
+		scope(exit) currentScope = oldScope;
+
+		currentScope = (cast(NestedScope) oldScope).clone();
+
+		import d.semantic.expression;
+		import d.semantic.declaration;
+		auto ev = ExpressionVisitor(pass).visit;
+
+		if (auto expr = cast(Expression) ev(fr.iterrated)) {
+			import d.semantic.defaultinitializer:InitBuilder;
+			auto ib = new InitBuilder(pass);
+
+			QualType elementType;
+			Expression size;
+			VariableExpression idx;
+			Variable elem;
+
+			if (auto at = cast(ArrayType) expr.type.type) {
+				size = new IntegerLiteral!false(fr.location,at.size,TypeKind.Ulong);
+				size.type = pass.object.getSizeT().type;
+				elementType = at.elementType;
+
+			} else if (auto st = cast(SliceType) expr.type.type) {
+				assert(0,"foreach for SliceTypes not Implemented");
+			} else {
+				assert(0,typeid(expr.type.type).toString~" is not supported as foreach argument (for now)");
+			}
+
+			if (fr.tupleElements.length==2) {
+				idx = getVariableExpressionFromDecl(fr.tupleElements[0], pass.object.getSizeT.type);
+				fr.tupleElements[1].value = ib.visit(fr.tupleElements[1].location, elementType);
+
+				elem = cast(Variable) currentScope.search(fr.tupleElements[1].name);
+
+			} else {
+				import
+				idx = new VariableExpression(fr.location, new Variable(fr.location, pass.object.getSizeT().type, BuiltinName!"", ib.visit(fr.location, pass.object.getSizeT.type)));
+
+				fr.tupleElements[0].value = ib.visit(fr.tupleElements[0].location, elementType);
+				new DeclarationStatement(fr.tupleElements[0].location, fr.tupleElements[0]).visit;
+
+				elem = cast(Variable) currentScope.search(fr.tupleElements[0].name);
+			}
+
+			auto inc =  new UnaryExpression(fr.location, pass.object.getSizeT().type, UnaryOp.PostInc, idx);
+			auto cmpr = new BinaryExpression(fr.location, pass.object.getSizeT().type, BinaryOp.Less, idx, size);
+			auto assign = new BinaryExpression(fr.location, expr.type, BinaryOp.Assign, new VariableExpression(fr.tupleElements[0].location, elem), new IndexExpression(fr.location, elementType, expr, [idx]));
+
+
+			Statement[] stmts = [new ExpressionStatement(assign), autoBlock(fr.statement)];
+			Statement stmt = new BlockStatement(fr.statement.location, stmts);
+			flattenedStmts ~= new ForStatement(fr.location, new ExpressionStatement(idx), cmpr, inc, stmt);
+		}
+	}
+
 	void visit(AstReturnStatement r) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		auto value = ev.visit(r.value);
-		
+
 		// TODO: precompute autotype instead of managing it here.
 		auto doCast = true;
 		if(auto bt = cast(BuiltinType) returnType.type) {
@@ -183,78 +257,78 @@ struct StatementVisitor {
 				doCast = false;
 			}
 		}
-		
+
 		if(doCast) {
 			value = buildImplicitCast(pass, r.location, QualType(returnType.type, returnType.qualifier), value);
 		}
-		
+
 		flattenedStmts ~= new ReturnStatement(r.location, value);
 	}
-	
+
 	void visit(BreakStatement s) {
 		flattenedStmts ~= s;
 	}
-	
+
 	void visit(ContinueStatement s) {
 		flattenedStmts ~= s;
 	}
-	
+
 	void visit(AstSwitchStatement s) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		auto expression = ev.visit(s.expression);
 		auto statement = autoBlock(s.statement);
-		
+
 		flattenedStmts ~= new SwitchStatement(s.location, expression, statement);
 	}
-	
+
 	void visit(AstCaseStatement s) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		auto cases = s.cases.map!(e => pass.evaluate(ev.visit(e))).array();
-		
+
 		flattenedStmts ~= new CaseStatement(s.location, cases);
 	}
-	
+
 	void visit(AstLabeledStatement s) {
 		auto labelIndex = flattenedStmts.length;
-		
+
 		visit(s.statement);
-		
+
 		auto statement = flattenedStmts[labelIndex];
-		
+
 		flattenedStmts[labelIndex] = new LabeledStatement(s.location, s.label, statement);
 	}
-	
+
 	void visit(GotoStatement s) {
 		flattenedStmts ~= s;
 	}
-	
+
 	void visit(AstScopeStatement s) {
 		flattenedStmts ~= new ScopeStatement(s.location, s.kind, autoBlock(s.statement));
 	}
-	
+
 	void visit(AstThrowStatement s) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		// TODO: Check that this is throwable
 		flattenedStmts ~= new ThrowStatement(s.location, ev.visit(s.value));
 	}
-	
+
 	void visit(AstTryStatement s) {
 		auto tryStmt = autoBlock(s.statement);
-		
-		import d.semantic.identifier;
-		auto iv = IdentifierVisitor!(function Class(identified) {
+
+		import d.semantic.identifier : AliasResolver;
+		auto iv = AliasResolver!(function Class(identified) {
 			static if(is(typeof(identified) : Symbol)) {
 				if(auto c = cast(Class) identified) {
 					return c;
 				}
 			}
-			
+
 			static if(is(typeof(identified.location))) {
 				import d.exception;
 				throw new CompileException(identified.location, typeid(identified).toString() ~ " is not a class.");
@@ -262,23 +336,23 @@ struct StatementVisitor {
 				// for typeof(null)
 				assert(0);
 			}
-		}, true)(pass);
-		
+		})(pass);
+
 		CatchBlock[] catches = s.catches.map!(c => CatchBlock(c.location, iv.visit(c.type), c.name, autoBlock(c.statement))).array();
-		
+
 		if(s.finallyBlock) {
 			flattenedStmts ~= new ScopeStatement(s.finallyBlock.location, ScopeKind.Exit, autoBlock(s.finallyBlock));
 		}
-		
+
 		flattenedStmts ~= new TryStatement(s.location, tryStmt, catches);
 	}
-	
+
 	void visit(StaticIf!AstStatement s) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		auto condition = evaluate(buildExplicitCast(pass, s.condition.location, getBuiltin(TypeKind.Bool), ev.visit(s.condition)));
-		
+
 		if((cast(BooleanLiteral) condition).value) {
 			foreach(item; s.items) {
 				visit(item);
@@ -289,19 +363,19 @@ struct StatementVisitor {
 			}
 		}
 	}
-	
+
 	void visit(Mixin!AstStatement s) {
 		import d.semantic.expression;
 		auto ev = ExpressionVisitor(pass);
-		
+
 		auto value = evaluate(ev.visit(s.value));
 		if(auto str = cast(StringLiteral) value) {
 			import d.lexer;
 			auto source = new MixinSource(s.location, str.value);
 			auto trange = lex!((line, begin, length) => Location(source, line, begin, length))(str.value ~ '\0', context);
-			
+
 			trange.match(TokenType.Begin);
-			
+
 			while(trange.front.type != TokenType.End) {
 				visit(trange.parseStatement());
 			}
