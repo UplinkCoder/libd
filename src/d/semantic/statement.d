@@ -186,6 +186,7 @@ struct StatementVisitor {
 		}
 		import d.semantic.expression;
 		import d.semantic.defaultinitializer;
+		import d.exception;
 		auto ev = ExpressionVisitor(pass);
 
 
@@ -219,7 +220,7 @@ struct StatementVisitor {
 		} else if (auto st = cast(SliceType) expr.type.type) {
 			assert(0,"foreach for SliceTypes not Implemented");
 		} else {
-			assert(0,typeid(expr.type.type).toString~" is not supported as foreach argument (for now)");
+			throw new CompileException(expr.location, typeid(expr.type.type).toString~" is not supported as foreach argument (for now)");
 		}
 	}
 
