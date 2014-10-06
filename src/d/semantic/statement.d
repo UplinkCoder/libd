@@ -207,9 +207,9 @@ struct StatementVisitor {
 				elem = getVariableExpressoionFromDeclaration(fr.tupleElements[0], elementType);
 			}
 			
-			auto inc =  new UnaryExpression(fr.location, pass.object.getSizeT().type, UnaryOp.PostInc, idx);
+			auto inc =  new UnaryExpression(fr.location, idx.type, UnaryOp.PostInc, idx);
 			auto cmpr = new BinaryExpression(fr.location, getBuiltin(TypeKind.Bool), BinaryOp.Less, idx, size);
-			auto assign = new BinaryExpression(fr.location, expr.type, BinaryOp.Assign, elem, new IndexExpression(fr.location, elementType, expr, [idx]));
+			auto assign = new BinaryExpression(fr.location, elementType, BinaryOp.Assign, elem, new IndexExpression(fr.location, elementType, expr, [idx]));
 			
 			Statement[] stmts = [new ExpressionStatement(assign)];
 			stmts ~= autoBlock(fr.statement);
