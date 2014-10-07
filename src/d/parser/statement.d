@@ -117,18 +117,19 @@ AstStatement parseStatement(TokenRange)(ref TokenRange trange) if(isTokenRange!T
 				QualAstType type;
 				switch(trange.front.type) {
 					case Ref :
-					/*lookahead.popFront();
+					lookahead.popFront();
 						
 						if(lookahead.front.type == Identifier) goto case Identifier;
 						
-						goto default;*/
-						assert(0,"foreach can't deal with ref (for now)");
+						goto default;
+					
 					case Identifier :
 						lookahead.popFront();
 						
 						if(lookahead.front.type == Comma || lookahead.front.type == Semicolon) {
 							if(trange.front.type == Ref) {
 								trange.popFront();
+								assert(0,"foreach can't deal with ref (for now)");
 							}
 							
 							type = QualAstType(new AutoType());
