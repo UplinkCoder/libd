@@ -184,6 +184,7 @@ struct StatementVisitor {
 			v.type = t;
 			return new VariableExpression(vd.location, v);
 		}
+
 		import d.semantic.expression;
 		import d.semantic.defaultinitializer;
 		import d.exception;
@@ -191,14 +192,27 @@ struct StatementVisitor {
 
 
 		auto expr = ev.visit(fr.iterrated);
+		QualType exprType = peelAlias(expr.type);
 
-		if (auto at = cast(ArrayType) expr.type.type) {
-
-			QualType elementType = at.elementType;
-			Expression size = new IntegerLiteral!false(fr.location,at.size,TypeKind.Uint);
-			size.type = pass.object.getSizeT().type;
+		auto at = cast(ArrayType) exprType.type;  
+		auto st = cast(SliceType) exprType.type;
+		if (at||st) {
+			QualType elementType;
+			Expression size;
 			VariableExpression idx;
 			VariableExpression elem;
+
+			if (at) {
+				elementType = at.elementType;
+				size = new IntegerLiteral!false(fr.location,at.size,TypeKind.Uint);
+			} else {
+				import d.semantic.identifier;
+
+				elementType = st.sliced;
+				assert(0,"foreach can't do sliceTypes yet");
+			}
+
+			size.type = pass.object.getSizeT().type;
 
 			if (fr.tupleElements.length==2) {
 				idx = getVariableExpressoionFromDeclaration(fr.tupleElements[0], pass.object.getSizeT().type);
@@ -217,9 +231,7 @@ struct StatementVisitor {
 			Statement stmt = new BlockStatement(fr.statement.location, stmts);
 			flattenedStmts ~= new ForStatement(fr.location, new ExpressionStatement(idx), cmpr, inc, stmt);
 		
-		} else if (auto st = cast(SliceType) expr.type.type) {
-			assert(0,"foreach for SliceTypes not Implemented");
-		} else {
+		} else  {
 			throw new CompileException(expr.location, typeid(expr.type.type).toString~" is not supported as foreach argument (for now)");
 		}
 	}
