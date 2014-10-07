@@ -190,7 +190,6 @@ struct StatementVisitor {
 		import d.exception;
 		auto ev = ExpressionVisitor(pass);
 
-
 		auto expr = ev.visit(fr.iterrated);
 		QualType exprType = peelAlias(expr.type);
 
@@ -231,7 +230,7 @@ struct StatementVisitor {
 			Statement stmt = new BlockStatement(fr.statement.location, stmts);
 			flattenedStmts ~= new ForStatement(fr.location, new ExpressionStatement(idx), cmpr, inc, stmt);
 		
-		} else  {
+		} else {
 			throw new CompileException(expr.location, typeid(expr.type.type).toString~" is not supported as foreach argument (for now)");
 		}
 	}
