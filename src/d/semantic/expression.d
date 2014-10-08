@@ -72,7 +72,7 @@ struct ExpressionVisitor {
 	Expression visit(CharacterLiteral e) {
 		return e;
 	}
-	
+
 	Expression visit(NullLiteral e) {
 		return e;
 	}
@@ -342,7 +342,15 @@ struct ExpressionVisitor {
 		
 		return new UnaryExpression(e.location, type, op, expr);
 	}
-	
+
+	/*Expression visit(AstConditionalExpression e) {
+		auto condition = buildExplicitCast(pass, e.condition.location, getBuiltin(TypeKind.Bool), visit(e.condition));
+		auto ifTrue = visit(e.ifTrue);
+		auto ifFalse = visit(e.ifFalse);
+
+		return new ConditionalExpression(e.location,condition.type.type,condition,ifTrue,ifFalse);
+	}*/
+
 	Expression visit(AstCastExpression e) {
 		import d.semantic.type;
 		auto tv = TypeVisitor(pass);

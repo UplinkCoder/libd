@@ -54,8 +54,8 @@ final class SemanticPass {
 	
 	ObjectReference object;
 	
-	Name[] versions = [BuiltinName!"SDC", BuiltinName!"D_LP64"];
-	
+	//Name[] versions = [BuiltinName!"SDC", BuiltinName!"D_LP64"];
+	Name[] versions = [BuiltinName!"SDC"];
 	static struct State {
 		Scope currentScope;
 		
@@ -81,18 +81,26 @@ final class SemanticPass {
 	Scheduler scheduler;
 	
 	alias Step = d.ir.symbol.Step;
-	
-	this(Context context, Evaluator evaluator, Source delegate(Name[]) sourceFactory) {
+
+	this(Context context, Source delegate(Name[]) sourceFactory, string[] versions=[], Evaluator evaluator = null) {
 		this.context	= context;
-		this.evaluator	= evaluator;
-		
+				
 		moduleVisitor		= new ModuleVisitor(this, sourceFactory);
 		scheduler			= new Scheduler(this);
-		
+
+		foreach(ver;versions) {
+				this.versions ~= context.getName(ver);
+		}
+
 		auto obj	= importModule([BuiltinName!"object"]);
 		object		= new ObjectReference(obj);
 		
 		scheduler.require(obj, Step.Populated);
+	}
+
+	void setEvaluator(Evaluator evaluator) {
+		assert(this.evaluator is null,"evaluator is a singleton can't be set twice!");
+		this.evaluator = evaluator;
 	}
 	
 	AstModule parse(S)(S source, Name[] packages) if(is(S : Source)) {

@@ -637,7 +637,7 @@ struct TypeDotIdentifierResolver(alias handler, alias bailoutOverride = null) {
 			// FIXME pass explicit location
 			auto location = Location.init; 
 			auto s = new IntegerLiteral!false(location, t.size, TypeKind.Uint);
-			s.type = pass.object.getSizeT().type
+			s.type = pass.object.getSizeT().type;
 			return handler(s);
 		}
 		return bailout(t);

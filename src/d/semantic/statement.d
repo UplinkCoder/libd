@@ -103,9 +103,8 @@ struct StatementVisitor {
 	
 	void visit(AstIfStatement s) {
 		import d.semantic.expression;
-		auto ev = ExpressionVisitor(pass);
 		
-		auto condition = buildExplicitCast(pass, s.condition.location, getBuiltin(TypeKind.Bool), ev.visit(s.condition));
+		auto condition = buildExplicitCast(pass, s.condition.location, getBuiltin(TypeKind.Bool), ExpressionVisitor(pass).visit(s.condition));
 		auto then = autoBlock(s.then);
 		
 		Statement elseStatement;
