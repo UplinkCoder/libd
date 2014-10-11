@@ -21,6 +21,7 @@ import std.algorithm;
 import std.array;
 import std.range;
 
+alias ArrayLiteral = d.ir.expression.ArrayLiteral;
 alias BinaryExpression = d.ir.expression.BinaryExpression;
 alias UnaryExpression = d.ir.expression.UnaryExpression;
 alias CallExpression = d.ir.expression.CallExpression;
@@ -51,7 +52,17 @@ struct ExpressionVisitor {
 	Expression visit(ParenExpression e) {
 		return visit(e.expr);
 	}
-	
+
+	Expression visit(AstArrayLiteral e) {
+		Expression[] vals;
+		vals.length = e.values.length;
+		foreach(immutable i, val; e.values) {
+			vals[i] = visit(val); 
+		}
+		QualType type = QualType(new ArrayType(vals[0].type, vals.length));
+		return new ArrayLiteral(e.location, type, vals);
+	}
+
 	Expression visit(BooleanLiteral e) {
 		return e;
 	}

@@ -320,8 +320,8 @@ alias AstNewExpression = NewExpression;
 class ArrayLiteral(T) if(is(T: AstExpression)) : T {
 	T[] values;
 	
-	this(Location location, T[] values) {
-		super(location);
+	this(U...)(Location location, U args, T[] values) {
+		super(location, args);
 		
 		this.values = values;
 	}
