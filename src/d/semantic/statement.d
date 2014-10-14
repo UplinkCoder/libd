@@ -227,8 +227,8 @@ struct StatementVisitor {
 			Statement[] stmts = [new ExpressionStatement(assign)];
 			stmts ~= autoBlock(fr.statement);
 			Statement stmt = new BlockStatement(fr.statement.location, stmts);
-			flattenedStmts ~= new ForStatement(fr.location, new ExpressionStatement(idx), cmpr, inc, stmt);
-		
+			// XXX: ExpressionStatement(idx) seens doubious if anything breaks bcause of this blame UplinkCoder
+			flattenedStmts ~= new ForStatement(fr.location, new ExpressionStatement(idx), cmpr, inc, stmt);		
 		} else {
 			throw new CompileException(expr.location, typeid(expr.type.type).toString~" is not supported as foreach argument (for now)");
 		}
