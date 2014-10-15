@@ -258,9 +258,9 @@ struct ExpressionVisitor {
 		auto condition = buildExplicitCast(pass, e.condition.location, getBuiltin(TypeKind.Bool), visit(e.condition));
 		auto ifTrue = visit(e.ifTrue);
 		auto ifFalse = visit(e.ifFalse);
-		
+
 		auto exprType = getPromotedType(pass, e.location, ifTrue.type.type, ifFalse.type.type);
-		
+
 		ifTrue = buildExplicitCast(pass, ifTrue.location, exprType, ifTrue);
 		ifFalse = buildExplicitCast(pass, ifFalse.location, exprType, ifFalse);
 		
