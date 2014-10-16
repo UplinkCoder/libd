@@ -224,14 +224,16 @@ struct StatementVisitor {
 				elem = getVariableExpressoionFromDeclaration(fr.tupleElements[0], elementType);
 			}
 
-			if (fr.reverse) {
-				idx.var.value = size;
+			/*	if (fr.reverse) {
+				idx.var.value = size.value;
+				import std.stdio;
+				writeln(idx.var.value.toString(context));
 				inc =  new UnaryExpression(fr.location, idx.type, UnaryOp.PostDec, idx);
-				cmpr = new BinaryExpression(fr.location, getBuiltin(TypeKind.Bool), BinaryOp.Greater, idx, new IntegerLiteral!false(fr.location, 0, TypeKind.Uint));
-			} else {
+				cmpr = new BinaryExpression(fr.location, getBuiltin(TypeKind.Bool), BinaryOp.Less, new IntegerLiteral!false(fr.location, 0, TypeKind.Uint), idx);
+			} else { */
 				inc =  new UnaryExpression(fr.location, idx.type, UnaryOp.PostInc, idx);
 				cmpr = new BinaryExpression(fr.location, getBuiltin(TypeKind.Bool), BinaryOp.Less, idx, size);
-			}
+			//}
 
 			auto assign = new BinaryExpression(fr.location, elementType, BinaryOp.Assign, elem, new IndexExpression(fr.location, elementType, expr, [idx]));
 
