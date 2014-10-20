@@ -64,7 +64,21 @@ Expression build(bool isExplicit)(SemanticPass pass, Location location, Type to,
 	
 	auto kind = Caster!(isExplicit, delegate CastKind(c, t) {
 		alias T = typeof(t);
-		static if (is(T : Aggregate)) {
+		static if (is(T : BuiltinType)) {
+			import d.semantic.valuerange;
+			if (auto bt = to.builtin) {
+				if (ValueRangeVisitor(pass).visit(e).isInRangeOf(ValueRangeVisitor(pass).visit(bt))) {
+					assert(bt == BuiltinType.Bool && isIntegral(t) || isIntegral(t) && isIntegral(bt) && unsigned(t) >= unsigned(bt));
+
+					if (bt == BuiltinType.Bool) {
+						return CastKind.IntegralToBool;
+					} else {
+						return CastKind.Trunc;
+					}
+				}
+			}
+			return CastKind.Invalid;
+		} else static if (is(T : Aggregate)) {
 			static struct AliasThisResult {
 				Expression expr;
 				CastKind level;
@@ -236,31 +250,31 @@ struct Caster(bool isExplicit, alias bailoutOverride = null) {
 				goto case Uint;
 			
 			case Byte, Ubyte, Short, Ushort, Int, Uint, Long, Ulong, Cent, Ucent :
-				if (isExplicit && bt == Bool) {
-					return CastKind.IntegralToBool;
+				if (bt == Bool) {
+					static if (isExplicit) {
+						return CastKind.IntegralToBool;
+					} else {
+						return bailout(t);
+					}
 				}
-				
+
 				if (!isIntegral(bt)) {
 					return CastKind.Invalid;
 				}
-				
+
 				t = unsigned(t);
 				bt = unsigned(bt);
-				switch(bt) {
-					case Ubyte, Ushort, Uint, Ulong, Ucent :
-						if (t == bt) {
-							return CastKind.Bit;
-						} else if (t < bt) {
-							return CastKind.Pad;
-						} else static if (isExplicit) {
-							return CastKind.Trunc;
-						} else {
-							return CastKind.Invalid;
-						}
-					
-					default:
-						assert(0);
+
+				if (t == bt) {
+					return CastKind.Bit;
+				} else if (t < bt) {
+					return CastKind.Pad;
+				} else static if (isExplicit) {
+					return CastKind.Trunc;
+				} else {
+					return bailout(t);
 				}
+
 			
 			case Float, Double, Real :
 				assert(0, "Floating point casts are not implemented");
@@ -316,10 +330,11 @@ struct Caster(bool isExplicit, alias bailoutOverride = null) {
 			}
 		}
 	}
-	
+
 	CastKind visitSliceOf(Type t) {
 		if (to.kind != TypeKind.Slice) {
 			return CastKind.Invalid;
+			
 		}
 		
 		auto e = to.getElement().getCanonical();
