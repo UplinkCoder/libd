@@ -65,6 +65,13 @@ Expression build(bool isExplicit)(SemanticPass pass, Location location, QualType
 	
 	auto kind = Caster!(isExplicit, delegate CastKind(c, t) {
 		alias T = typeof(t);
+		static if (is(T : BuiltinType)) {
+			import d.semantic.valuerange;
+			if (t && ValueRangeVisitor(pass).visit(e).isInRangeOf(t.kind)) {
+				return CastKind.Pad;
+			}
+		}
+
 		static if (is(T : StructType)) {
 			auto aliasThis = t.dstruct.dscope.aliasThis;
 		} else static if (is(T : ClassType)) {
@@ -322,7 +329,11 @@ struct Caster(bool isExplicit, alias bailoutOverride = null) {
 	}
 	
 	CastKind visit(Type to, BuiltinType t) {
-		return FromBuiltin().visit(t.kind, to);
+		CastKind r = FromBuiltin().visit(t.kind, to);
+		if (r==CastKind.Invalid) {
+			r = bailout(t);
+		}
+		return r;
 	}
 	
 	struct FromPointer {
