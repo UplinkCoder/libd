@@ -283,9 +283,18 @@ struct IdentifierResolver(alias handler, bool asAlias) {
 	}
 	
 	Ret visit(IdentifierBracketIdentifier i) {
-		assert(0, "can't resolve aaType yet");
+		return SymbolResolver!identifiableHandler(pass).visit(i.index).apply!(delegate Ret(identified) {
+			static if(is(typeof(identified) : Expression)) {
+				import d.ast.expression:IdentifierExpression;
+				return visit(new IdentifierBracketExpression(i.location, i.indexed, new IdentifierExpression(i.index)));
+			} else static if (is(typeof(identified) : QualType)) {
+				assert(0, "can't resolve aaType yet");
+			} else {
+				assert(0,i.toString(pass.context) ~ " is unresolveble.");
+			}
+		})();
 	}
-	
+
 	Ret visit(IdentifierBracketExpression i) {
 		return SymbolResolver!identifiableHandler(pass).visit(i.indexed).apply!(delegate Ret(identified) {
 			static if(is(typeof(identified) : QualType)) {
