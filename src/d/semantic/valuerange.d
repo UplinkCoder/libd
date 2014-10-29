@@ -25,6 +25,11 @@ struct ValueRange {
 		return isInRangeOf(rangeOf(k));
 	}
 
+	static ValueRange fromNumbers(long[] nums) {
+		import std.algorithm : max, min, reduce;
+		return ValueRange(reduce!min(nums), reduce!max(nums));
+	}
+
 	ValueRange opBinary(string op)(ValueRange rhs) {
 		import std.algorithm : max, min;
 		import std.math : abs;
@@ -32,6 +37,10 @@ struct ValueRange {
 			return ValueRange(_min + rhs._min, _max + rhs._max);
 		} else static if (op == "-") {
 			return ValueRange(_min - rhs._max, _max - rhs._min);
+		} else static if (op == "*") {
+			return fromNumbers([_min * rhs._min, _min * rhs._max, _max * rhs._max]);
+		} else static if (op == "/") {
+			return fromNumbers([_min / rhs._min, _min / rhs._max, _max / rhs._min, ._max / rhs.max]);
 		} else static if (op == "%") {
 			auto r_max = max(abs(rhs._min), rhs.max) - 1;
 			return ValueRange(min(_min, -r_max), max(_max, r_max));
