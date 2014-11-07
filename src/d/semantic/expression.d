@@ -165,6 +165,10 @@ struct ExpressionVisitor {
 			
 			case Concat :
 			case ConcatAssign :
+				if (auto clhs = cast(StringLiteral) lhs) 
+				if (auto crhs = cast(StringLiteral) rhs)  { 
+					return new StringLiteral(e.location, clhs.value ~ crhs.value);
+				}
 				assert(0, "~,~= not implemented.");
 			
 			case LogicalOr :
