@@ -165,8 +165,11 @@ struct ExpressionVisitor {
 			
 			case Concat :
 			case ConcatAssign :
-				assert(0, "~,~= not implemented.");
-			
+				if (auto clhs = cast(StringLiteral) lhs) 
+				if (auto crhs = cast(StringLiteral) rhs)  { 
+					return new StringLiteral(e.location, clhs.value ~ crhs.value);
+				} 
+					assert(0, "~,~= not implemented.");
 			case LogicalOr :
 			case LogicalAnd :
 				type = getBuiltin(TypeKind.Bool);
@@ -746,44 +749,34 @@ struct ExpressionVisitor {
 	
 	Expression visit(AstIndexExpression e) {
 		auto indexed = visit(e.indexed);
-		
-		auto qt = peelAlias(indexed.type);
-		auto type = qt.type;
-		if(auto asSlice = cast(SliceType) type) {
-			qt = asSlice.sliced;
-		} else if(auto asPointer = cast(PointerType) type) {
-			qt = asPointer.pointed;
-		} else if(auto asArray = cast(ArrayType) type) {
-			qt = asArray.elementType;
-		} else {
+
+		import d.convenience.traits;
+		auto et = elementType(indexed.type);
+
+		if (et is QualType.init) {
 			return pass.raiseCondition!Expression(e.location, "Can't index " ~ indexed.type.toString(context));
+		} else {
+			auto arguments = e.arguments.map!(e => visit(e)).array();
+			
+			return new IndexExpression(e.location, et, indexed, arguments);
 		}
-		
-		auto arguments = e.arguments.map!(e => visit(e)).array();
-		
-		return new IndexExpression(e.location, qt, indexed, arguments);
 	}
 	
 	Expression visit(AstSliceExpression e) {
 		// TODO: check if it is valid.
 		auto sliced = visit(e.sliced);
+
+		import d.convenience.traits;
+		auto et = elementType(sliced.type);
 		
-		auto qt = peelAlias(sliced.type);
-		auto type = qt.type;
-		if(auto asSlice = cast(SliceType) type) {
-			qt.type = asSlice.sliced.type;
-		} else if(auto asPointer = cast(PointerType) type) {
-			qt.type = asPointer.pointed.type;
-		} else if(auto asArray = cast(ArrayType) type) {
-			qt.type = asArray.elementType.type;
-		} else {
+		if (et is QualType.init) {
 			return pass.raiseCondition!Expression(e.location, "Can't slice " ~ sliced.type.toString(context));
+		} else {
+			auto first = e.first.map!(e => visit(e)).array();
+			auto second = e.second.map!(e => visit(e)).array();
+			
+			return new SliceExpression(e.location, QualType(new SliceType(et)), sliced, first, second);
 		}
-		
-		auto first = e.first.map!(e => visit(e)).array();
-		auto second = e.second.map!(e => visit(e)).array();
-		
-		return new SliceExpression(e.location, QualType(new SliceType(qt)), sliced, first, second);
 	}
 	
 	Expression visit(AstAssertExpression e) {
