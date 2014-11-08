@@ -300,6 +300,20 @@ Type peelAlias(Type t) {
 	return t;
 }
 
+/// convience function  gets the elementType of arrays, slices or pointers
+QualType elementType(QualType qt)  {
+	qt = peelAlias(qt);
+	if(auto asSlice = cast(SliceType) qt.type) {
+		return asSlice.sliced;
+	} else if(auto asPointer = cast(PointerType) qt.type) {
+		return asPointer.pointed;
+	} else if(auto asArray = cast(ArrayType) qt.type) {
+		return asArray.elementType;
+	}
+	
+	assert(0, typeid(qt.type).toString() ~ " has no elementType");
+}
+
 /**
  * Struct type.
  * Type created via a struct declaration.

@@ -738,44 +738,32 @@ struct ExpressionVisitor {
 	
 	Expression visit(AstIndexExpression e) {
 		auto indexed = visit(e.indexed);
+
+		auto et = elementType(indexed.type);
 		
-		auto qt = peelAlias(indexed.type);
-		auto type = qt.type;
-		if(auto asSlice = cast(SliceType) type) {
-			qt = asSlice.sliced;
-		} else if(auto asPointer = cast(PointerType) type) {
-			qt = asPointer.pointed;
-		} else if(auto asArray = cast(ArrayType) type) {
-			qt = asArray.elementType;
-		} else {
+		if (et is QualType.init) {
 			return pass.raiseCondition!Expression(e.location, "Can't index " ~ indexed.type.toString(context));
 		}
 		
 		auto arguments = e.arguments.map!(e => visit(e)).array();
 		
-		return new IndexExpression(e.location, qt, indexed, arguments);
+		return new IndexExpression(e.location, et, indexed, arguments);
 	}
 	
 	Expression visit(AstSliceExpression e) {
 		// TODO: check if it is valid.
 		auto sliced = visit(e.sliced);
-		
-		auto qt = peelAlias(sliced.type);
-		auto type = qt.type;
-		if(auto asSlice = cast(SliceType) type) {
-			qt.type = asSlice.sliced.type;
-		} else if(auto asPointer = cast(PointerType) type) {
-			qt.type = asPointer.pointed.type;
-		} else if(auto asArray = cast(ArrayType) type) {
-			qt.type = asArray.elementType.type;
-		} else {
+
+		auto et = elementType(sliced.type);
+			
+		if (et is QualType.init) {
 			return pass.raiseCondition!Expression(e.location, "Can't slice " ~ sliced.type.toString(context));
 		}
 		
 		auto first = e.first.map!(e => visit(e)).array();
 		auto second = e.second.map!(e => visit(e)).array();
 		
-		return new SliceExpression(e.location, QualType(new SliceType(qt)), sliced, first, second);
+		return new SliceExpression(e.location, QualType(new SliceType(et)), sliced, first, second);
 	}
 	
 	Expression visit(AstAssertExpression e) {
