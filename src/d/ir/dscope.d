@@ -233,7 +233,8 @@ class SymbolScope : NestedScope {
 }
 
 class AggregateScope : SymbolScope {
-	Name[] aliasThis;
+	import d.ast.declaration:AliasThisDeclaration;
+	AliasThisDeclaration[] aliasThis;
 
 	this(Symbol symbol, Scope parent) {
 		super(symbol, parent);

@@ -100,7 +100,7 @@ Expression build(bool isExplicit)(SemanticPass pass, Location location, QualType
 				
 				// TODO: refactor so we do not throw.
 				try {
-					cLevel = sr.resolveInExpression(location, e, n);
+					cLevel = sr.resolveInExpression(location, e, n.name);
 				} catch(CompileException e) {
 					continue;
 				}

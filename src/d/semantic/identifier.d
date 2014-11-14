@@ -490,10 +490,10 @@ struct ExpressionDotIdentifierResolver(alias handler) {
 					pass.buildErrorNode = true;
 
 					Identifiable[] candidates;
-					foreach (n; aliasThis) {
+					foreach (at; aliasThis) {
 						// TODO: refactor so we do not throw.
 						try {
-							candidates ~= edir.resolve(n);
+							candidates ~= edir.resolve(at.name);
 						} catch(CompileException e) {
 							continue;
 						}
