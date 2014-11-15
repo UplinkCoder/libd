@@ -573,5 +573,9 @@ struct IftiTypeMatcher {
 		
 		return false;
 	}
+
+	bool visit(AliasType t) {
+		return visit(peelAlias(t));
+	}
 }
 
