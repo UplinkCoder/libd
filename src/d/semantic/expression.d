@@ -102,7 +102,34 @@ struct ExpressionVisitor {
 		auto rhs = visit(e.rhs);
 		auto op = e.op;
 		
+
 		QualType type;
+		Template opBinary;
+
+		try {
+			opBinary = SymbolResolver!(function Template(e) {
+			static if (is(typeof(e) : Template)) {
+				return e;
+			}
+			assert(0,typeid(e).toString() ~ "is no valid opBinary");
+			})(pass).resolveInType(e.location, lhs.type, BuiltinName!"opBinary");
+		} catch (CompileException e) {
+			import std.stdio;
+			writeln(e.msg);
+		}
+
+		if (opBinary) {
+			import d.semantic.dtemplate;
+			TemplateInstance instance = TemplateInstancier(pass).instanciate(e.location, opBinary, [TemplateArgument(new StringLiteral(e.location, op.opToString()))], [rhs]);
+			
+			auto fe = SymbolResolver!(function Expression(e) {
+				static if (is(typeof(e): Expression)) return e;
+				assert(0);
+			})(pass).resolveInSymbol(e.location, instance, BuiltinName!"opBinary");
+			
+			return handleCall(e.location, fe, [rhs]);
+		}
+
 		final switch(op) with(BinaryOp) {
 			case Comma:
 				type = rhs.type;
@@ -250,7 +277,7 @@ struct ExpressionVisitor {
 			case UnorderedEqual :
 				assert(0, "Unorderd comparisons are not implemented.");
 		}
-		
+
 		return new BinaryExpression(e.location, type, op, lhs, rhs);
 	}
 
