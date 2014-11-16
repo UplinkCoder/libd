@@ -64,10 +64,15 @@ Expression build(bool isExplicit)(SemanticPass pass, Location location, QualType
 	auto kind = Caster!(isExplicit, delegate CastKind(c, t) {
 		alias T = typeof(t);
 		static if (is(T : BuiltinType)) {
+			import d.ir.type:isIntegral;
 			import d.semantic.valuerange;
-			if (t && ValueRangeVisitor(pass).visit(e).isInRangeOf(t.kind)) {
-				return CastKind.Pad;
+			if (auto bt = cast (BuiltinType) to.type) {
+				if (ValueRangeVisitor(pass).visit(e).isInRangeOf(ValueRangeVisitor(pass).visit(bt))) {
+					assert(bt.kind == TypeKind.Bool && isIntegral(t.kind) || isIntegral(t.kind) && isIntegral(bt.kind) && unsigned(t.kind) >= unsigned (bt.kind));
+					return CastKind.Trunc;
+				}
 			}
+			return CastKind.Invalid;
 		} else static if (is(T : StructType) || is(T : ClassType)) {
 			static struct AliasThisResult {
 				Expression expr;
@@ -317,10 +322,7 @@ struct Caster(bool isExplicit, alias bailoutOverride = null) {
 	
 	CastKind visit(Type to, BuiltinType t) {
 		CastKind r = FromBuiltin().visit(t.kind, to);
-		if (r==CastKind.Invalid) {
-			r = bailout(t);
-		}
-		return r;
+		return (r == CastKind.Invalid) ? bailout(t) : r;
 	}
 	
 	struct FromPointer {
