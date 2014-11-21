@@ -70,20 +70,3 @@ private auto dispatchImpl(
 		return unhandled(t);
 	}
 }
-
-auto accept(T, V)(T t, ref V visitor) if(is(V == struct) && (is(T == class) || is(T == interface))) {
-	return acceptImpl(t, visitor);
-}
-
-auto accept(T, V)(T t, V visitor) if((is(V == class) || is(V == interface)) && (is(T == class) || is(T == interface))) {
-	return acceptImpl(t, visitor);
-}
-
-private auto acceptImpl(T, V)(T t, auto ref V visitor) {
-	static if(is(typeof(visitor.visit(t)))) {
-		return visitor.visit(t);
-	} else {
-		visitor.dispatch(t);
-	}
-}
-
