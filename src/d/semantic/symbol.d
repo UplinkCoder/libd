@@ -208,10 +208,10 @@ struct SymbolAnalyzer {
 			}
 			
 			// Update scope.
-			currentScope = f.dscope = f.hasContext
+			f.dscope = f.hasContext
 				? new ClosureScope(f, oldScope)
 				: new FunctionScope(f, oldScope);
-			
+			currentScope = f.dscope;
 			ctxType = new ContextType(f);
 			
 			// Register parameters.
@@ -391,10 +391,12 @@ struct SymbolAnalyzer {
 		assert(s.linkage == Linkage.D || s.linkage == Linkage.C);
 		s.mangle = "S" ~ manglePrefix;
 		
-		auto dscope = currentScope = s.dscope = s.hasContext
+		s.dscope = s.hasContext
 			? new VoldemortScope(s, oldScope)
 			: new AggregateScope(s, oldScope);
-		
+		auto dscope = s.dscope;
+		currentScope = s.dscope;
+
 		fieldIndex = 0;
 		Field[] fields;
 		if (s.hasContext) {
@@ -466,9 +468,11 @@ struct SymbolAnalyzer {
 		
 		c.mangle = "C" ~ manglePrefix;
 		
-		auto dscope = currentScope = c.dscope = c.hasContext
+		c.dscope = c.hasContext
 			? new VoldemortScope(c, oldScope)
 			: new AggregateScope(c, oldScope);
+		auto dscope = c.dscope;
+		currentScope = c.dscope;
 		
 		Field[] baseFields;
 		Method[] baseMethods;
