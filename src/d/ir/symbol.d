@@ -147,6 +147,20 @@ class TemplateParameter : Symbol {
 	}
 }
 
+
+abstract class Aggregate : TypeSymbol {
+	Symbol[] members;
+	
+	AggregateScope dscope;
+	
+	this(Location location, Name name, Symbol[] members) {
+		super(location, name);
+		
+		this.name = name;
+		this.members = members;
+	}
+}
+
 final:
 /**
  * An Error occured but a Symbol is expected.
@@ -310,66 +324,45 @@ class ValueAlias : ValueSymbol {
 /**
  * Class
  */
-class Class : TypeSymbol {
+class Class : Aggregate {
 	Class base;
 	Interface[] interfaces;
 	
-	Symbol[] members;
-	
-	AggregateScope dscope;
-	
-	this(Location location, Name name, Symbol[] members) {
-		super(location, name);
-		
-		this.name = name;
-		this.members = members;
+	this(Location location, Name name, Symbol[] members, Interface[] interfaces = [], Class base = null) {
+		super(location, name, members);
 	}
 }
 
 /**
  * Interface
  */
-class Interface : TypeSymbol {
-	Interface[] bases;
-	Symbol[] members;
-	
-	AggregateScope dscope;
-	
-	this(Location location, Name name, Interface[] bases, Symbol[] members) {
-		super(location, name);
-		
-		this.bases = bases;
-		this.members = members;
+class Interface : Aggregate {
+	Interface[] baseInterfaces;
+
+	this(Location location, Name name, Symbol[] members, Interface[] bases = []) {
+		super(location, name, members);
+
+		baseInterfaces = bases;
 	}
 }
 
 /**
  * Struct
  */
-class Struct : TypeSymbol {
-	Symbol[] members;
-	
-	AggregateScope dscope;
-	
+class Struct : Aggregate {
+
 	this(Location location, Name name, Symbol[] members) {
-		super(location, name);
-		
-		this.members = members;
+		super(location, name, members);
 	}
 }
 
 /**
  * Union
  */
-class Union : TypeSymbol {
-	Symbol[] members;
-	
-	SymbolScope dscope;
-	
+class Union : Aggregate {
+
 	this(Location location, Name name, Symbol[] members) {
-		super(location, name);
-		
-		this.members = members;
+		super(location, name, members);
 	}
 }
 

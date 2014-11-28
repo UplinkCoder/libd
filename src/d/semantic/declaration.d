@@ -16,7 +16,7 @@ import std.range;
 
 alias Module = d.ir.symbol.Module;
 
-enum AggregateType {
+enum AggregateKind {
 	None,
 	Struct,
 	Class,
@@ -42,7 +42,7 @@ struct DeclarationVisitor {
 			Linkage, "linkage", 3,
 			Visibility, "visibility", 3,
 			Storage, "storage", 2,
-			AggregateType, "aggregateType", 2,
+			AggregateKind, "aggregateKind", 2,
 			AddContext, "addContext", 1,
 			CtUnitLevel, "ctLevel", 2,
 			bool, "isOverride", 1,
@@ -59,7 +59,7 @@ struct DeclarationVisitor {
 		linkage = Linkage.D;
 		visibility = Visibility.Public;
 		storage = Storage.Local;
-		aggregateType = AggregateType.None;
+		aggregateKind = AggregateKind.None;
 		addContext = AddContext.No;
 		isOverride = false;
 	}
@@ -76,8 +76,8 @@ struct DeclarationVisitor {
 				visibility = param;
 			} else static if(is(T == Storage)) {
 				storage = param;
-			} else static if(is(T == AggregateType)) {
-				aggregateType = param;
+			} else static if(is(T == AggregateKind)) {
+				aggregateKind = param;
 			} else static if(is(T == AddContext)) {
 				addContext = param;
 			} else {
@@ -273,7 +273,7 @@ struct DeclarationVisitor {
 		Function f;
 		
 		auto isStatic = storage.isNonLocal;
-		if(isStatic || aggregateType != AggregateType.Class || d.name.isReserved) {
+		if(isStatic || aggregateKind != AggregateKind.Class || d.name.isReserved) {
 			f = new Function(d.location, null, d.name, [], null);
 		} else {
 			uint index = 0;
@@ -288,7 +288,7 @@ struct DeclarationVisitor {
 		f.visibility = getVisibility(stc);
 		f.storage = Storage.Enum;
 		
-		f.hasThis = isStatic ? false : aggregateType != AggregateType.None;
+		f.hasThis = isStatic ? false : aggregateKind != AggregateKind.None;
 		f.hasContext = isStatic ? false : !!addContext;
 		
 		f.isAbstract = isAbstract || stc.isAbstract;
@@ -303,7 +303,7 @@ struct DeclarationVisitor {
 		auto storage = getStorage(stc);
 		
 		Variable v;
-		if(storage.isNonLocal || aggregateType == AggregateType.None) {
+		if(storage.isNonLocal || aggregateKind == AggregateKind.None) {
 			v = new Variable(d.location, getBuiltin(TypeKind.None), d.name);
 		} else {
 			v = new Field(d.location, fieldIndex++, getBuiltin(TypeKind.None), d.name);
@@ -425,7 +425,7 @@ struct DeclarationVisitor {
 	}
 	
 	void visit(AliasThisDeclaration d) {
-		assert(aggregateType != AggregateType.None, "alias this can only appear in aggregates.");
+		assert(aggregateKind != AggregateKind.None, "alias this can only appear in aggregates.");
 		
 		// TODO: have a better scheme to do this in order to:
 		// - keep the location of the alias for error messages.

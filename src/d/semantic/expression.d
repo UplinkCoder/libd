@@ -76,6 +76,20 @@ struct ExpressionVisitor {
 	Expression visit(StringLiteral e) {
 		return e;
 	}
+
+	Expression visit (TraitsExpression e) {
+		import std.stdio;
+		if (e.trait == context.getName("getOverloads")) {
+			auto aggregate = cast(Aggregate) currentScope.resolve(e.args[0]);
+			auto os = cast(OverloadSet) aggregate.dscope.resolve(e.args[1]);
+
+			import std.conv;
+			writeln("there are " ~ to!string(os.set.length) ~ " overloads of " ~ os.toString(pass.context));
+
+		}
+
+		return e;
+	}
 	
 	private Expression getRvalue(Expression value) {
 		auto v = new Variable(value.location, value.type, BuiltinName!"", value);

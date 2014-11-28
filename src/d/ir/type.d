@@ -140,6 +140,15 @@ bool isFloat(TypeKind t) {
 	return (t >= TypeKind.Float) && (t <= TypeKind.Real);
 }
 
+abstract class AggregateType : Type {
+	import d.ir.symbol;
+	Aggregate aggregate;
+
+	override string toString(Context ctx, TypeQualifier) const {
+		return aggregate.toString(ctx);
+	}
+}
+
 final:
 /**
  * Closure context pointer
@@ -348,16 +357,13 @@ Type peelAlias(Type t) {
  * Struct type.
  * Type created via a struct declaration.
  */
-class StructType : Type {
-	import d.ir.symbol;
-	Struct dstruct;
-	
+class StructType : AggregateType {
 	this(Struct dstruct) {
-		this.dstruct = dstruct;
+		this.aggregate = dstruct;
 	}
-	
-	override string toString(Context ctx, TypeQualifier) const {
-		return dstruct.toString(ctx);
+
+	@property Struct dstruct() {
+		return cast (Struct) aggregate;
 	}
 }
 
@@ -365,17 +371,15 @@ class StructType : Type {
  * Class type.
  * Type created via a class declaration.
  */
-class ClassType : Type {
-	import d.ir.symbol;
-	Class dclass;
-	
+class ClassType : AggregateType {
 	this(Class dclass) {
-		this.dclass = dclass;
+		this.aggregate = dclass;
 	}
-	
-	override string toString(Context ctx, TypeQualifier) const {
-		return dclass.toString(ctx);
+
+	@property Class dclass() {
+		return cast (Class) aggregate;
 	}
+
 }
 
 /**

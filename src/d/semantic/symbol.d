@@ -406,7 +406,7 @@ struct SymbolAnalyzer {
 			fields = [ctx];
 		}
 		
-		auto dv = DeclarationVisitor(pass, AggregateType.Struct);
+		auto dv = DeclarationVisitor(pass, AggregateKind.Struct);
 		
 		auto members = dv.flatten(d.members, s);
 		s.step = Step.Populated;
@@ -542,7 +542,7 @@ struct SymbolAnalyzer {
 			baseFields ~= ctx;
 		}
 		
-		auto dv = DeclarationVisitor(pass, AggregateType.Class);
+		auto dv = DeclarationVisitor(pass, AggregateKind.Class);
 		auto members = dv.flatten(d.members, c);
 		
 		c.step = Step.Signed;
