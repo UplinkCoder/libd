@@ -120,7 +120,7 @@ unittest {
 }
 
 BuiltinType unsigned(BuiltinType t) in {
-	assert(isIntegral(t), "unsigned only applys to integral types");
+	assert(isIntegral(t) || t == BuiltinType.Bool, "unsigned only applys to integral types or bools");
 } body {
 	return cast(BuiltinType) (t | 0x01);
 }
