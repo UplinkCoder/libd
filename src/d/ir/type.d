@@ -170,10 +170,15 @@ public:
 		d.qualifier = TypeQualifier.Mutable;
 		return Type(d, payload);
 	}
-	
+
+	bool isBuiltin() const {
+		return kind == TypeKind.Builtin;
+	}
+
 	@property
 	BuiltinType builtin() inout in {
-		assert(kind == TypeKind.Builtin);
+		import std.conv;
+		assert(isBuiltin, to!string(kind) ~ " is not Builtin");
 	} body {
 		return cast(BuiltinType) desc.data;
 	}
