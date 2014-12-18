@@ -11,6 +11,7 @@ import d.ir.type;
 import d.semantic.semantic;
 
 alias BinaryExpression = d.ir.expression.BinaryExpression;
+alias CallExpression = d.ir.expression.CallExpression;
 alias UnaryExpression = d.ir.expression.UnaryExpression;
 
 struct ValueRange {
@@ -62,7 +63,7 @@ struct ValueRangeVisitor {
 	ValueRange visit(BuiltinType bt) in {
 		assert(bt == BuiltinType.Bool || isIntegral(bt));
 		// Overflow of ValueRanges is tricky, so for now it is disallowed
-		assert(bt != BuiltinType.Ulong && bt != BuiltinType.Long,"VRP for longs and ulongs is not supported right now");
+	//	assert(bt != BuiltinType.Ulong && bt != BuiltinType.Long,"VRP for longs and ulongs is not supported right now");
 	} body {
 		if (bt == BuiltinType.Bool) {
 			return ValueRange(0, 1, false);
@@ -72,6 +73,8 @@ struct ValueRangeVisitor {
 	}
 	
 	ValueRange visit(Expression e) {
+		assert(e.type.isBuiltin,"VRP can only be used with BuiltinTypes");
+
 		return this.dispatch(e);
 
 	}
@@ -116,9 +119,13 @@ struct ValueRangeVisitor {
 		}
 		assert(0);
 	}
-	
+
+	ValueRange visit(CallExpression e) {
+		return visit(e.type.builtin);
+	}
+
 	ValueRange visit(CastExpression e) {
-		assert(e.type.builtin && e.expr.type.builtin);
+		assert(e.type.isBuiltin && e.expr.type.isBuiltin);
 		if (unsigned(e.type.builtin) > unsigned(e.expr.type.builtin)) {
 			return visit(e.expr);
 		} else {

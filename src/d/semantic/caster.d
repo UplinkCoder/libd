@@ -65,12 +65,13 @@ Expression build(bool isExplicit)(SemanticPass pass, Location location, Type to,
 	auto kind = Caster!(isExplicit, delegate CastKind(c, t) {
 		alias T = typeof(t);
 		static if (is(T : BuiltinType)) {
+			static assert(!isExplicit);
 			import d.semantic.valuerange;
-			if (auto bt = to.builtin) {
-				if (ValueRangeVisitor(pass).visit(e).isInRangeOf(ValueRangeVisitor(pass).visit(bt))) {
-					assert(bt == BuiltinType.Bool && isIntegral(t) || isIntegral(t) && isIntegral(bt) && unsigned(t) >= unsigned(bt));
+			if (to.isBuiltin && e.type.isBuiltin) {
+				if (ValueRangeVisitor(pass).visit(e).isInRangeOf(ValueRangeVisitor(pass).visit(to.builtin))) {
+					assert(to.builtin == BuiltinType.Bool && isIntegral(t) || isIntegral(t) && isIntegral(to.builtin) && unsigned(t) >= unsigned(to.builtin));
 
-					if (bt == BuiltinType.Bool) {
+					if (to.builtin == BuiltinType.Bool) {
 						return CastKind.IntegralToBool;
 					} else {
 						return CastKind.Trunc;
