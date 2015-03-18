@@ -272,82 +272,131 @@ public:
 		import d.semantic.expression;
 		auto iterated = ExpressionVisitor(pass).visit(f.iterated);
 		
-		import d.semantic.identifier;
-		auto length = SymbolResolver!(delegate Expression (e) {
-			static if(is(typeof(e) : Expression)) {
-				return e;
-			} else {
-				return pass.raiseCondition!Expression(iterated.location, typeid(e).toString() ~ " is not a valid length.");
-			}
-		})(pass).resolveInExpression(iterated.location, iterated, BuiltinName!"length");
-		
-		Variable idx;
-		
-		auto loc = f.location;
-		switch(f.tupleElements.length) {
-			case 1 :
-				import d.semantic.defaultinitializer;
-				idx = new Variable(loc, length.type, BuiltinName!"", InitBuilder(pass, loc).visit(length.type));
-				
-				idx.step = Step.Processed;
-				break;
+		//TODO deduplicate code
+		bool handleRange(Aggregate agg) {
+			auto _front = cast(Function)(cast(OverloadSet) agg.dscope.resolve(BuiltinName!"front")).set[0];
+			auto _empty = cast(Function)(cast(OverloadSet) agg.dscope.resolve(BuiltinName!"empty")).set[0];
+			auto _popFront = cast(Function)(cast(OverloadSet) agg.dscope.resolve(BuiltinName!"popFront")).set[0];
 			
-			case 2 :
+			if (_front && _popFront && _empty && f.tupleElements.length == 1 &&
+				!_front.params && !_empty.params && !_popFront.params) {
+
 				auto idxDecl = f.tupleElements[0];
-				assert(!idxDecl.type.isRef, "index can't be ref");
 				
 				import d.semantic.type;
 				auto t = idxDecl.type.getType().isAuto
-					? length.type
-					: TypeVisitor(pass).visit(idxDecl.type.getType());
+					? _front.type.returnType.getType()
+						: TypeVisitor(pass).visit(idxDecl.type.getType());
 				
 				auto idxLoc = idxDecl.location;
 				
 				import d.semantic.defaultinitializer;
-				idx = new Variable(idxLoc, t, idxDecl.name, InitBuilder(pass, idxLoc).visit(t));
+				auto idx = new Variable(idxLoc, t, idxDecl.name, InitBuilder(pass, idxLoc).visit(t));
 				
 				idx.step = Step.Processed;
-				currentScope.addSymbol(idx);
-				
-				break;
+				pass.currentScope.addSymbol(idx);
+
+				auto initialize = new SymbolStatement(idx);
+				auto idxExpr = new VariableExpression(idx.location, idx);
+				auto condition = new UnaryExpression(_empty.location, Type.get(BuiltinType.Bool), UnaryOp.Not, new CallExpression(_empty.location, _empty.type.returnType.getType, new FunctionExpression(_empty.location, _empty), [iterated]));
+				auto increment = new CallExpression(_popFront.location, _popFront.type.returnType.getType, new FunctionExpression(_popFront.location, _popFront), [iterated]);
+
+				auto assign = new BinaryExpression(f.location, t, BinaryOp.Assign, idxExpr, new CallExpression(_front.location, _front.type.getType, new FunctionExpression(_front.location, _front), [iterated]));
+				auto stmt = new BlockStatement(f.statement.location, [new ExpressionStatement(assign), autoBlock(f.statement)]);
+
+				flattenedStmts ~= new ForStatement(f.location, initialize, condition, increment, stmt);
+
+				return true;
+			}
 			
-			default :
-				assert(0, "Wrong number of elements");
+			return false;
 		}
-		
-		assert(idx);
-		
-		auto initialize = new SymbolStatement(idx);
-		auto idxExpr = new VariableExpression(idx.location, idx);
-		auto condition = new BinaryExpression(loc, Type.get(BuiltinType.Bool), BinaryOp.Less, idxExpr, length);
-		auto increment = new UnaryExpression(loc, idxExpr.type, UnaryOp.PreInc, idxExpr);
-		
-		auto iType = iterated.type.getCanonical();
-		assert(iType.hasElement, "Only array and slice are supported for now.");
-		
-		Type et = iType.element;
-		
-		auto eDecl = f.tupleElements[$ - 1];
-		auto eLoc = eDecl.location;
-		
-		import d.semantic.expression;
-		auto eVal = ExpressionVisitor(pass).getIndex(eLoc, iterated, idxExpr);
-		auto eType = eVal.type.getParamType(eDecl.type.isRef, false);
-		
-		if (!eDecl.type.getType().isAuto) {
-			import d.semantic.type;
-			eType = TypeVisitor(pass).visit(eDecl.type);
-			eVal = buildImplicitCast(pass, eLoc, eType.getType(), eVal);
+
+		if (iType.hasElement) {
+			Variable idx;
+
+			import d.semantic.identifier;
+			auto length = SymbolResolver!(delegate Expression (e) {
+					static if(is(typeof(e) : Expression)) {
+						return e;
+					} else {
+						return pass.raiseCondition!Expression(iterated.location, typeid(e).toString() ~ " is not a valid length.");
+					}
+				})(pass).resolveInExpression(iterated.location, iterated, BuiltinName!"length");
+			
+			auto loc = f.location;
+
+			switch(f.tupleElements.length) {
+
+				case 1 :
+					import d.semantic.defaultinitializer;
+					idx = new Variable(loc, length.type, BuiltinName!"", InitBuilder(pass, loc).visit(length.type));
+					
+					idx.step = Step.Processed;
+					break;
+					
+				case 2 :
+					auto idxDecl = f.tupleElements[0];
+					assert(!idxDecl.type.isRef, "index can't be ref");
+					
+					import d.semantic.type;
+					auto t = idxDecl.type.getType().isAuto
+						? length.type
+							: TypeVisitor(pass).visit(idxDecl.type.getType());
+					
+					auto idxLoc = idxDecl.location;
+					
+					import d.semantic.defaultinitializer;
+					idx = new Variable(idxLoc, t, idxDecl.name, InitBuilder(pass, idxLoc).visit(t));
+					
+					idx.step = Step.Processed;
+					currentScope.addSymbol(idx);
+					
+					break;
+					
+				default :
+					assert(0, "Wrong number of elements");
+			}
+			
+			assert(idx);
+			
+			auto initialize = new SymbolStatement(idx);
+			auto idxExpr = new VariableExpression(idx.location, idx);
+			auto condition = new BinaryExpression(loc, Type.get(BuiltinType.Bool), BinaryOp.Less, idxExpr, length);
+			auto increment = new UnaryExpression(loc, idxExpr.type, UnaryOp.PreInc, idxExpr);
+			
+			Type et = iType.element;
+			
+			auto eDecl = f.tupleElements[$ - 1];
+			auto eLoc = eDecl.location;
+			
+			import d.semantic.expression;
+			auto eVal = ExpressionVisitor(pass).getIndex(eLoc, iterated, idxExpr);
+			auto eType = eVal.type.getParamType(eDecl.type.isRef, false);
+			
+			if (!eDecl.type.getType().isAuto) {
+				import d.semantic.type;
+				eType = TypeVisitor(pass).visit(eDecl.type);
+				eVal = buildImplicitCast(pass, eLoc, eType.getType(), eVal);
+			}
+			
+			auto element = new Variable(eLoc, eType, eDecl.name, eVal);
+			element.step = Step.Processed;
+			currentScope.addSymbol(element);
+			
+			auto assign = new BinaryExpression(loc, eType.getType(), BinaryOp.Assign, new VariableExpression(eLoc, element), eVal);
+			auto stmt = new BlockStatement(f.statement.location, [new ExpressionStatement(assign), autoBlock(f.statement)]);
+			
+			flattenedStmts ~= new ForStatement(loc, initialize, condition, increment, stmt);
+		} else if (iType.kind == TypeKind.Class) {
+			if (handleRange(iType.dclass)) {return;}
+			assert(0, "foreach for classes does not work yet");
+		} else if (iType.kind == TypeKind.Struct) {
+			if(handleRange(iType.dstruct)) {return;} 
+			else assert(0, "foreach for structs does not work yet");
+		} else {
+			assert(0, "you can't do foreach on this at all");
 		}
-		
-		auto element = new Variable(eLoc, eType, eDecl.name, eVal);
-		element.step = Step.Processed;
-		currentScope.addSymbol(element);
-		
-		auto assign = new BinaryExpression(loc, eType.getType(), BinaryOp.Assign, new VariableExpression(eLoc, element), eVal);
-		auto stmt = new BlockStatement(f.statement.location, [new ExpressionStatement(assign), autoBlock(f.statement)]);
-		
-		flattenedStmts ~= new ForStatement(loc, initialize, condition, increment, stmt);
 	}
 	
 	void visit(ForeachRangeStatement f) {
