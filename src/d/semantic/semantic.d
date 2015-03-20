@@ -164,15 +164,18 @@ final class SemanticPass {
 		auto location = main.fbody.location;
 		
 		auto type = main.type;
-		auto returnType = type.returnType.getType();
+		auto returnType = type.returnType.getType().getCanonical();
+		
 		auto call = new CallExpression(location, returnType, new FunctionExpression(location, main), []);
 		
 		Statement[] fbody;
 		if (returnType.kind == TypeKind.Builtin && returnType.builtin == BuiltinType.Void) {
 			fbody ~= new ExpressionStatement(call);
 			fbody ~= new ReturnStatement(location, new IntegerLiteral!true(location, 0, BuiltinType.Int));
-		} else {
+		} else if (returnType.kind == TypeKind.Builtin && returnType.builtin == BuiltinType.Int) {
 			fbody ~= new ReturnStatement(location, call);
+		} else {
+			throw new CompileException(main.location, "main must return int or void, not " ~ returnType.toString(context));
 		}
 		
 		type = FunctionType(Linkage.C, Type.get(BuiltinType.Int).getParamType(false, false), [], false);
