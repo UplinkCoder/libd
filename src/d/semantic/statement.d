@@ -298,13 +298,16 @@ public:
 			case 2 :
 				idxDecl = f.tupleElements[0];
 				assert(!idxDecl.type.isRef, "index can't be ref");
-				
+
+				idxName = idxDecl.name;
+
 				import d.semantic.type;
 				idxType = idxDecl.type.getType().isAuto
 					? length.type
-						: TypeVisitor(pass).visit(idxDecl.type.getType());
+					: TypeVisitor(pass).visit(idxDecl.type.getType());
 				
 				idxLoc = idxDecl.location;
+
 				
 				break;
 				
@@ -314,24 +317,33 @@ public:
 
 		BinaryOp cmp_op;
 		UnaryOp inc_op;
+		Expression stop;
 
+		import d.semantic.defaultinitializer;
 		if (f.reverse) {
-			idxInit = buildImplicitCast(pass, idxLoc, idxType, length);
+			idxInit = buildExplicitCast(pass, idxLoc, idxType, length);
 			cmp_op = cmp_op = BinaryOp.GreaterEqual;
 			inc_op = UnaryOp.PreDec;
+			stop = InitBuilder(pass, idxLoc).visit(idxType);
 		} else {
-			import d.semantic.defaultinitializer;
 			idxInit = InitBuilder(pass, idxLoc).visit(idxType);
 			cmp_op = BinaryOp.Less;
 			inc_op = UnaryOp.PreInc;
+			stop = buildExplicitCast(pass, idxLoc, idxType, length);
 		}
 
 		auto idx = new Variable(idxLoc, idxType, idxName, idxInit);
-		
+
 		assert(idx);
+		idx.step = Step.Processed;
+
+		if (idx.name != BuiltinName!"") {
+			currentScope.addSymbol(idx);
+		}
+
 		auto idxExpr = new VariableExpression(idx.location, idx);
 		auto initialize = f.reverse ? new ExpressionStatement(new UnaryExpression(loc, idx.type, UnaryOp.PreDec, idxExpr)) : new SymbolStatement(idx);
-		auto condition = new BinaryExpression(loc, Type.get(BuiltinType.Bool), cmp_op, idxExpr, length);
+		auto condition = new BinaryExpression(loc, Type.get(BuiltinType.Bool), cmp_op, idxExpr, stop);
 		auto increment = new UnaryExpression(loc, idxExpr.type, inc_op, idxExpr);
 		
 		auto iType = iterated.type.getCanonical();
