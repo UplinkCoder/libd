@@ -17,6 +17,7 @@ enum Step {
 }
 
 class Symbol : Node {
+	Scope definedIn;
 	Name name;
 	string mangle;
 	

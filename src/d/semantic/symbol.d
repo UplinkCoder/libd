@@ -203,20 +203,21 @@ struct SymbolAnalyzer {
 				currentScope = oldScope;
 				ctxSym = oldCtxSym;
 			}
-			
+
 			// Update scope.
 			currentScope = f.dscope = f.hasContext
 				? new ClosureScope(f, oldScope)
 				: new FunctionScope(f, oldScope);
 			
 			ctxSym = f;
-			
+
 			// Register parameters.
 			foreach(p; params) {
 				p.step = Step.Processed;
 				
 				if (!p.name.isEmpty()) {
 					f.dscope.addSymbol(p);
+					p.definedIn = currentScope;
 				}
 			}
 			
@@ -254,6 +255,11 @@ struct SymbolAnalyzer {
 		}
 		
 		f.step = Step.Processed;
+		f.definedIn = currentScope;
+		import std.stdio;
+		import d.semantic.ctfe;
+		writeln("isPure '", f.name.toString(context), "' : ", isPure(f)); 
+
 	}
 	
 	void analyze(FunctionDeclaration d, Method m) {
@@ -310,6 +316,7 @@ struct SymbolAnalyzer {
 		}
 		
 		v.step = Step.Processed;
+		v.definedIn = currentScope;
 	}
 	
 	void analyze(VariableDeclaration d, Field f) {
@@ -442,6 +449,7 @@ struct SymbolAnalyzer {
 		s.members ~= otherSymbols;
 		
 		s.step = Step.Processed;
+		s.definedIn = oldScope;
 	}
 	
 	void analyze(ClassDeclaration d, Class c) {
@@ -645,6 +653,7 @@ struct SymbolAnalyzer {
 		c.members ~= members;
 		
 		c.step = Step.Processed;
+		c.definedIn = oldScope;
 	}
 	
 	void analyze(EnumDeclaration d, Enum e) in {
@@ -718,6 +727,7 @@ struct SymbolAnalyzer {
 		}
 		
 		e.step = Step.Processed;
+		e.definedIn = oldScope;
 	}
 	
 	void analyze(TemplateDeclaration d, Template t) {
@@ -790,6 +800,7 @@ struct SymbolAnalyzer {
 		}
 		
 		t.step = Step.Processed;
+		t.definedIn = oldScope;
 	}
 	
 	void analyze(Template t, TemplateInstance i) {
@@ -834,6 +845,7 @@ struct SymbolAnalyzer {
 		
 		i.members ~= members;
 		i.step = Step.Processed;
+		i.definedIn = oldScope;
 	}
 }
 
