@@ -266,9 +266,7 @@ public:
 		}
 		
 		currentScope = (cast(NestedScope) oldScope).clone();
-		
-		assert(!f.reverse, "foreach_reverse not supported at this point.");
-		
+
 		import d.semantic.expression;
 		auto iterated = ExpressionVisitor(pass).visit(f.iterated);
 		
@@ -281,46 +279,60 @@ public:
 			}
 		})(pass).resolveInExpression(iterated.location, iterated, BuiltinName!"length");
 		
-		Variable idx;
+		Location idxLoc;
+		Type idxType;
+		Name idxName;
+		Expression idxInit;
+		ParamDecl idxDecl;
 		
 		auto loc = f.location;
+		
 		switch(f.tupleElements.length) {
 			case 1 :
-				import d.semantic.defaultinitializer;
-				idx = new Variable(loc, length.type, BuiltinName!"", InitBuilder(pass, loc).visit(length.type));
+				idxName = BuiltinName!"";
+				idxType = length.type;
+				idxLoc = loc;
 				
-				idx.step = Step.Processed;
 				break;
-			
+				
 			case 2 :
-				auto idxDecl = f.tupleElements[0];
+				idxDecl = f.tupleElements[0];
 				assert(!idxDecl.type.isRef, "index can't be ref");
 				
 				import d.semantic.type;
-				auto t = idxDecl.type.getType().isAuto
+				idxType = idxDecl.type.getType().isAuto
 					? length.type
-					: TypeVisitor(pass).visit(idxDecl.type.getType());
+						: TypeVisitor(pass).visit(idxDecl.type.getType());
 				
-				auto idxLoc = idxDecl.location;
-				
-				import d.semantic.defaultinitializer;
-				idx = new Variable(idxLoc, t, idxDecl.name, InitBuilder(pass, idxLoc).visit(t));
-				
-				idx.step = Step.Processed;
-				currentScope.addSymbol(idx);
+				idxLoc = idxDecl.location;
 				
 				break;
-			
+				
 			default :
 				assert(0, "Wrong number of elements");
 		}
+
+		BinaryOp cmp_op;
+		UnaryOp inc_op;
+
+		if (f.reverse) {
+			idxInit = buildImplicitCast(pass, idxLoc, idxType, length);
+			cmp_op = cmp_op = BinaryOp.GreaterEqual;
+			inc_op = UnaryOp.PreDec;
+		} else {
+			import d.semantic.defaultinitializer;
+			idxInit = InitBuilder(pass, idxLoc).visit(idxType);
+			cmp_op = BinaryOp.Less;
+			inc_op = UnaryOp.PreInc;
+		}
+
+		auto idx = new Variable(idxLoc, idxType, idxName, idxInit);
 		
 		assert(idx);
-		
-		auto initialize = new SymbolStatement(idx);
 		auto idxExpr = new VariableExpression(idx.location, idx);
-		auto condition = new BinaryExpression(loc, Type.get(BuiltinType.Bool), BinaryOp.Less, idxExpr, length);
-		auto increment = new UnaryExpression(loc, idxExpr.type, UnaryOp.PreInc, idxExpr);
+		auto initialize = f.reverse ? new ExpressionStatement(new UnaryExpression(loc, idx.type, UnaryOp.PreDec, idxExpr)) : new SymbolStatement(idx);
+		auto condition = new BinaryExpression(loc, Type.get(BuiltinType.Bool), cmp_op, idxExpr, length);
+		auto increment = new UnaryExpression(loc, idxExpr.type, inc_op, idxExpr);
 		
 		auto iType = iterated.type.getCanonical();
 		assert(iType.hasElement, "Only array and slice are supported for now.");
