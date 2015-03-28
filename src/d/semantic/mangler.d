@@ -210,7 +210,35 @@ struct ValueMangler {
 	string visit(CompileTimeExpression e) {
 		return this.dispatch(e);
 	}
-	
+
+	string visit(StringLiteral s) {
+		import util.hex;
+
+		auto ret = "a";
+		auto str = s.value;
+		auto len = str.length;
+
+		ret.reserve(len * 2 + 8);
+		ret ~= to!string(len);
+		ret ~= '_';
+		foreach(ubyte c; str) {
+			ret ~= byte2hex(c);
+		}
+		
+		return ret;
+	}
+
+	unittest {
+		import d.location;
+		auto vm = ValueMangler();
+		// check an ascii string
+		assert(vm.visit(new StringLiteral(Location.init, "Hello World")) 
+			== "a11_48656c6c6f20576f726c64");
+		// check an unicode symbol
+		assert(vm.visit(new StringLiteral(Location.init, "©"))
+			== "a2_c2a9");
+	}
+
 	string visit(BooleanLiteral e) {
 		return to!string(cast(ubyte) e.value);
 	}
