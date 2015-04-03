@@ -266,7 +266,8 @@ public:
 	
 	@property
 	uint size() const in {
-		assert(kind == TypeKind.Array, "Only array have size.");
+		assert(kind == TypeKind.Array, "Only arrays have size.");
+		assert(desc.data <= uint.max, "Array sizes are not expected to be larger than uint.max.");
 	} body {
 		return cast(uint) desc.data;
 	}
@@ -274,8 +275,9 @@ public:
 	@property
 	auto sequence() inout in {
 		assert(kind == TypeKind.Sequence, "Not a sequence type.");
+		assert(desc.data <= uint.max, "Sequences are not expected to be larger than uint.max.");
 	} body {
-		return payload.next[0 .. desc.data];
+		return payload.next[0 .. cast(uint) desc.data];
 	}
 	
 	bool hasPointerABI() const {
